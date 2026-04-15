@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verdiary - Seu Jardim Virtual</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#d8e2fd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="Logo192.png">
+
+    <style>
+        :root { 
+            --azul-escuro: #01345f; 
+            --white: #ffffff; 
+            --danger: #d32f2f; 
+            --primary: #2e7d32; 
+            --cinza-claro: #f4f7ff;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #d6e1fd;
+            overflow-x: hidden;
+        }
+
+        /* --- ANIMAÇÕES DE INTRO --- */
+        .splash-container {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #d6e1fd; display: flex; justify-content: center; align-items: center;
+            z-index: 2000; animation: sumir 0.1s forwards 2.5s; pointer-events: none; 
+        }
+        .logo-explosiva { width: 150px; mix-blend-mode: multiply; animation: crescer 0.8s cubic-bezier(0.6, 0.04, 0.98, 0.33) forwards 1.8s; }
+
+        .cortina-wrapper {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center; z-index: 1500;
+            pointer-events: none;
+        }
+        
+        .logo-interna-container {
+            position: absolute; z-index: 1600; opacity: 0;
+            display: flex; flex-direction: column; align-items: center;
+            animation: aparecerRapido 0.5s ease-out forwards 3.2s, sumirDevagar 0.5s forwards 5s;
+        }
+        .logo-interna { width: 130px; }
+        .nome-app-intro { margin-top: 10px; color: #d6e1fd; font-size: 2.5rem; font-weight: 900; letter-spacing: -1px; text-transform: lowercase; }
+
+        .lado { position: absolute; top: 0; width: 51%; height: 100%; background-color: var(--azul-escuro); animation-duration: 1.2s; animation-fill-mode: forwards; animation-delay: 5.2s; z-index: 1550; }
+        .esquerda { left: 0; animation-name: abrirEsquerda; }
+        .direita { right: 0; animation-name: abrirDireita; }
+
+        #pagina-inicial {
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            height: 100vh; text-align: center; opacity: 0;
+            animation: aparecerFinal 1s forwards 6s; 
+            position: relative; z-index: 100;
+        }
+        .logo-final { width: 180px; margin-bottom: 10px; }
+        .boas-vindas-main { color: var(--azul-escuro); font-size: 2.2rem; font-weight: 900; margin-bottom: 30px; text-transform: lowercase; letter-spacing: -1px; }
+
+        .botao-vamos-la {
+            background-color: var(--azul-escuro); color: #d6e1fd; border: none; padding: 18px 50px;
+            font-size: 1.1rem; font-weight: bold; border-radius: 40px; cursor: pointer;
+            text-transform: uppercase; box-shadow: 0 6px 20px rgba(0,0,0,0.3); transition: 0.3s;
+        }
+
+        /* --- APP PRINCIPAL --- */
+        #app-principal {
+            display: none; opacity: 0; flex-direction: column; align-items: center;
+            padding: 15px; min-height: 100vh; transition: opacity 0.8s ease;
+            background-image: url('Fundo.png'); background-size: cover; background-position: center;
+            background-repeat: no-repeat; background-attachment: fixed;
+        }
+
+        .card { 
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            padding: 20px; border-radius: 20px; width: 100%; max-width: 400px; margin-bottom: 20px;
+            box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: 0 8px 32px rgba(1, 52, 95, 0.15);
+        }
+
+        .header-plantas { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .icon-ajuda { 
+            width: 24px; height: 24px; border: 2px solid var(--azul-escuro); border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; font-weight: bold;
+            color: var(--azul-escuro); cursor: pointer; font-size: 14px;
+        }
+
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; color: var(--azul-escuro); font-weight: bold; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.7rem; color: #666; font-weight: bold; margin-bottom: 5px;}
+        
+        .day { aspect-ratio: 1; background: rgba(255,255,255,0.4); border-radius: 8px; font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; border: 1px solid rgba(0,0,0,0.03); cursor: pointer; position: relative; }
+        .day.today { border: 2px solid var(--primary); background: #fff; font-weight: 900; opacity: 1 !important; }
+        .day.passado { opacity: 0.4; }
+        .day.atrasado { border: 2px solid var(--danger); background: rgba(211, 47, 47, 0.1) !important; opacity: 1 !important; }
+
+        .dots-container { width: 100%; display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
+        .color-stripe { width: 100%; height: 4px; border-radius: 1px; }
+        .color-stripe.concluida { background-color: #000000 !important; opacity: 0.8; }
+
+        .btn-main { background: var(--azul-escuro); color: #fff; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; max-width: 400px; text-transform: uppercase; margin-bottom: 15px; }
+
+        /* --- MODAIS --- */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 5000; backdrop-filter: blur(5px); }
+        .modal-content { background: var(--white); padding: 25px; border-radius: 25px; width: 85%; max-width: 380px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); max-height: 85vh; overflow-y: auto; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 0.85rem; font-weight: bold; color: var(--azul-escuro); margin-left: 5px; }
+        .form-group input { padding: 12px 15px; border-radius: 12px; border: 2px solid var(--cinza-claro); background: var(--cinza-claro); font-size: 1rem; color: var(--azul-escuro); outline: none; }
+        .form-group input[type="color"] { height: 50px; padding: 5px; cursor: pointer; }
+
+        .atrasada-alerta { color: var(--danger); font-weight: 900; text-transform: uppercase; font-size: 0.85rem; }
+
+        .tutorial-texto h4 { margin: 10px 0 5px 0; color: var(--azul-escuro); border-bottom: 1px solid #eee; }
+        .tutorial-texto p, .tutorial-texto ul { font-size: 0.85rem; color: #444; margin-bottom: 10px; line-height: 1.4; }
+
+        @keyframes sumir { to { opacity: 0; visibility: hidden; } }
+        @keyframes crescer { to { transform: scale(90); } }
+        @keyframes aparecerRapido { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        @keyframes sumirDevagar { to { opacity: 0; } }
+        @keyframes abrirEsquerda { to { transform: translateX(-100%); visibility: hidden; } }
+        @keyframes abrirDireita { to { transform: translateX(100%); visibility: hidden; } }
+        @keyframes aparecerFinal { to { opacity: 1; } }
+
+        .balao-info {
+            position: absolute; background: var(--azul-escuro); color: #fff; padding: 10px 15px;
+            border-radius: 12px; font-size: 0.8rem; z-index: 3000; pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); transform: translate(-50%, -120%);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="splash-container"><img src="logo, escura.png" class="logo-explosiva"></div>
+    <div class="cortina-wrapper">
+        <div class="lado esquerda"></div><div class="lado direita"></div>
+        <div class="logo-interna-container">
+            <img src="logo, clara.png" class="logo-interna">
+            <span class="nome-app-intro">verdiary</span>
+        </div>
+    </div>
+
+    <div id="pagina-inicial">
+        <img src="logo, escura.png" class="logo-final">
+        <div class="boas-vindas-main">sejam bem vindos</div>
+        <button class="botao-vamos-la" onclick="revelarApp()">Vamos lá</button>
+    </div>
+
+    <div id="app-principal">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: var(--azul-escuro); margin: 0; font-size: 2.5rem; font-weight: 900;">verdiary</h1>
+            <p style="color: var(--azul-escuro); margin: 0; font-weight: 700; opacity: 0.6; text-transform: uppercase; letter-spacing: 2px; font-size: 0.8rem;">seu jardim virtual</p>
+        </div>
+        
+        <button class="btn-main" onclick="abrirModalCadastro()">+ Cadastrar Planta</button>
+        
+        <div class="card">
+            <div class="calendar-header">
+                <button onclick="mudarMes(-1)" style="background:none; border:none; color:var(--azul-escuro); font-weight:bold; cursor:pointer; font-size:1.5rem;">‹</button>
+                <span id="mesAno"></span>
+                <button onclick="mudarMes(1)" style="background:none; border:none; color:var(--azul-escuro); font-weight:bold; cursor:pointer; font-size:1.5rem;">›</button>
+            </div>
+            <div class="weekdays"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
+            <div id="calendar" class="calendar-grid"></div>
+        </div>
+
+        <div class="card">
+            <div class="header-plantas">
+                <h3 style="margin:0; color: var(--azul-escuro);">Minhas Plantas</h3>
+                <div class="icon-ajuda" onclick="abrirModal('modalTutorial')">i</div>
+            </div>
+            <table style="width: 100%; border-collapse: collapse;"><tbody id="listaPlantas"></tbody></table>
+            <button class="btn-main" style="margin-top:20px; width: 100%;" onclick="abrirModalConfirmacao()">✅ Confirmar Regas</button>
+            <button class="btn-main" style="width: 100%; background: none; color: var(--azul-escuro); border: 1px solid var(--azul-escuro);" onclick="abrirHistorico()">Ver Histórico</button>
+        </div>
+    </div>
+
+    <div id="modalTutorial" class="modal">
+        <div class="modal-content">
+            <h3 style="color: var(--azul-escuro); text-align: center; margin-top:0;">Guia Verdiary 🌿</h3>
+            <div class="tutorial-texto">
+                <h4>1. Cadastro Seguro</h4>
+                <p>O app agora exige que cada planta tenha um <b>nome único</b> e uma <b>cor exclusiva</b> para não confundir você no calendário.</p>
+                <h4>2. Regras de Intervalo</h4>
+                <p>O intervalo mínimo é de <b>1 dia</b>. O app bloqueia números negativos ou zero para garantir que sua planta não sofra!</p>
+                <h4>3. Legenda do Calendário</h4>
+                <ul>
+                    <li><b>Borda Verde:</b> Hoje.</li>
+                    <li><b>Borda Vermelha:</b> Planta com sede (atrasada)!</li>
+                    <li><b>Listra Colorida:</b> Dia da rega prevista.</li>
+                    <li><b>Listra Preta:</b> Rega já concluída.</li>
+                    <li><b>Opacidade Baixa:</b> Dias que já passaram.</li>
+                </ul>
+                <h4>4. Confirmação</h4>
+                <p>Ao clicar em <b>Confirmar Regas</b>, você verá o nome das plantas atrasadas em vermelho com a contagem exata de dias de atraso.</p>
+            </div>
+            <button class="btn-main" onclick="fecharModal('modalTutorial')">Entendi!</button>
+        </div>
+    </div>
+
+    <div id="modalPlanta" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitulo" style="color: var(--azul-escuro); margin-top: 0;">Nova Planta</h3>
+            <div class="form-group"><label>Nome da Planta</label><input type="text" id="nome" placeholder="Ex: Samambaia"></div>
+            <div class="form-group"><label>Intervalo (Dias)</label><input type="number" id="intervalo" min="1" placeholder="Ex: 3"></div>
+            <div class="form-group"><label>Data da Última Rega</label><input type="date" id="dataRega"></div>
+            <div class="form-group"><label>Cor no Calendário</label><input type="color" id="cor" value="#2e7d32"></div>
+            <button class="btn-main" onclick="salvarPlanta()" style="margin-top: 10px;">Salvar</button>
+            <button onclick="fecharModal('modalPlanta')" style="background:none; border:none; color:#777; cursor:pointer; font-weight:bold;">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="modalConfirmacao" class="modal"><div class="modal-content"><h3>O que você regou hoje?</h3><div id="checklistRegas"></div><button class="btn-main" onclick="finalizarRegas()">Concluir</button><button onclick="fecharModal('modalConfirmacao')" style="background:none; border:none; cursor:pointer;">Fechar</button></div></div>
+    <div id="modalHistorico" class="modal"><div class="modal-content"><h3>Histórico</h3><div id="listaHistorico" style="max-height: 250px; overflow-y: auto;"></div><button class="btn-main" style="background:var(--danger)" onclick="limparHistorico()">Limpar Tudo</button><button onclick="fecharModal('modalHistorico')" style="background:none; border:none; cursor:pointer;">Fechar</button></div></div>
+
+    <script>
+        let minhasPlantas = JSON.parse(localStorage.getItem('plantas')) || [];
+        let dataVisualizacao = new Date();
+        let editIndex = null;
+
+        function getHojeISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+        function abrirModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function salvarPlanta() {
+            const nomeInput = document.getElementById('nome').value.trim();
+            const intInput = parseInt(document.getElementById('intervalo').value);
+            const dtInput = document.getElementById('dataRega').value;
+            const corInput = document.getElementById('cor').value;
+            const hojeISO = getHojeISO();
+
+            if(!nomeInput || isNaN(intInput) || intInput < 1 || !dtInput) return alert("Preencha todos os campos corretamente (Mínimo 1 dia).");
+            
+            // BLOQUEIO DE DATA FUTURA (MANTIDO)
+            if(dtInput > hojeISO) return alert("A data da última rega não pode ser no futuro!");
+
+            if(minhasPlantas.some((p, idx) => p.nome.toLowerCase() === nomeInput.toLowerCase() && idx !== editIndex)) return alert("Já existe uma planta com esse nome.");
+            if(minhasPlantas.some((p, idx) => p.cor === corInput && idx !== editIndex)) return alert("Essa cor já está em uso.");
+
+            const planta = { nome: nomeInput, intervalo: intInput, data: dtInput, cor: corInput };
+            if(editIndex !== null) minhasPlantas[editIndex] = planta; else { minhasPlantas.push(planta); registrarNoHistoricoManual(nomeInput, dtInput); }
+            localStorage.setItem('plantas', JSON.stringify(minhasPlantas));
+            fecharModal('modalPlanta'); renderizarTudo();
+        }
+
+        function registrarNoHistoricoManual(nome, data) {
+            let hist = JSON.parse(localStorage.getItem('verdiary_historico')) || [];
+            if(!hist.some(h => h.nome === nome && h.dataISO === data)) {
+                hist.unshift({ nome, dataISO: data });
+                localStorage.setItem('verdiary_historico', JSON.stringify(hist));
+            }
+        }
+
+        function finalizarRegas() {
+            const checks = document.querySelectorAll('.p-check:checked'), hojeStr = getHojeISO();
+            if(checks.length > 0) {
+                checks.forEach(c => { 
+                    const p = minhasPlantas[c.dataset.idx];
+                    p.data = hojeStr; 
+                    registrarNoHistoricoManual(p.nome, hojeStr);
+                });
+                localStorage.setItem('plantas', JSON.stringify(minhasPlantas));
+                fecharModal('modalConfirmacao'); 
+                renderizarTudo();
+                enviarAviso("Drink excelente! 🏆", "Plantas hidratadas na dose certa. Até!");
+            }
+        }
+
+        function renderizarTudo() {
+            const grid = document.getElementById('calendar'), lista = document.getElementById('listaPlantas');
+            grid.innerHTML = ''; lista.innerHTML = '';
+            const hoje = new Date(); hoje.setHours(0,0,0,0);
+            const hojeISO = getHojeISO();
+            const ano = dataVisualizacao.getFullYear(), mes = dataVisualizacao.getMonth();
+            document.getElementById('mesAno').innerText = `${["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes]} ${ano}`;
+
+            const primDia = new Date(ano, mes, 1).getDay(), ultDia = new Date(ano, mes + 1, 0).getDate();
+            for (let i = 0; i < primDia; i++) grid.innerHTML += `<div class="day empty"></div>`;
+            for (let d = 1; d <= ultDia; d++) {
+                const dt = new Date(ano, mes, d); dt.setHours(0,0,0,0);
+                const dtISO = ano + '-' + String(mes + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                let cl = (dtISO === hojeISO) ? "today" : "";
+                if (dt < hoje && dtISO !== hojeISO) cl += " passado";
+                let isAtrasado = false;
+                minhasPlantas.forEach(p => {
+                    let dProx = new Date(p.data + 'T00:00:00'); dProx.setDate(dProx.getDate() + p.intervalo);
+                    if(dProx.getTime() === dt.getTime() && dt < hoje) isAtrasado = true;
+                });
+                if(isAtrasado) cl += " atrasado";
+                grid.innerHTML += `<div class="day ${cl}" onclick="mostrarBalao(event, ${d},${mes},${ano})"><b>${d}</b><div class="dots-container" id="dots-${d}"></div></div>`;
+            }
+
+            minhasPlantas.forEach((p, idx) => {
+                lista.innerHTML += `<tr><td style="padding:10px 5px"><div style="width:14px; height:14px; border-radius:50%; background:${p.cor}"></div></td><td style="color:var(--azul-escuro); font-weight:600">${p.nome}</td><td style="text-align:right"><button onclick="editarPlanta(${idx})" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⋮</button><button onclick="prepararExcluir(${idx})" style="background:none; border:none; cursor:pointer;">🗑️</button></td></tr>`;
+                let dF = new Date(p.data + 'T00:00:00'); dF.setDate(dF.getDate() + p.intervalo);
+                if(dF.getMonth() === mes && dF.getFullYear() === ano) {
+                    const c = document.getElementById(`dots-${dF.getDate()}`);
+                    if(c) c.innerHTML += `<div class="color-stripe" style="background:${p.cor}"></div>`;
+                }
+            });
+
+            const hist = JSON.parse(localStorage.getItem('verdiary_historico')) || [];
+            hist.forEach(h => {
+                const partes = h.dataISO.split('-');
+                if(parseInt(partes[1])-1 === mes && parseInt(partes[0]) === ano) {
+                    const c = document.getElementById(`dots-${parseInt(partes[2])}`);
+                    if(c) c.innerHTML += `<div class="color-stripe concluida"></div>`;
+                }
+            });
+        }
+
+        function abrirModalConfirmacao() {
+            const container = document.getElementById('checklistRegas'), hoje = new Date(); hoje.setHours(0,0,0,0);
+            let html = "";
+            minhasPlantas.forEach((p, i) => {
+                let dProx = new Date(p.data + 'T00:00:00'); dProx.setDate(dProx.getDate() + p.intervalo);
+                if(dProx <= hoje) {
+                    let atrasoTxt = ""; let est = "";
+                    if (dProx < hoje) {
+                        const diff = Math.ceil(Math.abs(hoje - dProx) / (86400000));
+                        atrasoTxt = ` (+${diff} dias)`; est = 'class="atrasada-alerta"';
+                    }
+                    html += `<div style="margin-bottom:12px; display:flex; align-items:center; gap:10px;"><input type="checkbox" class="p-check" data-idx="${i}" style="width:20px; height:20px;"> <span ${est}>${p.nome}${atrasoTxt}</span></div>`;
+                }
+            });
+            container.innerHTML = html || "<p style='text-align:center; color:#777;'>🌱 Tudo regado por hoje!</p>";
+            abrirModal('modalConfirmacao');
+        }
+
+        function abrirHistorico() {
+            const hist = JSON.parse(localStorage.getItem('verdiary_historico')) || [];
+            const lista = document.getElementById('listaHistorico');
+            lista.innerHTML = hist.length ? hist.map(h => `<div style="font-size:0.85rem; border-bottom:1px solid #eee; padding:8px 0; color:var(--azul-escuro)"><b>${h.dataISO.split('-').reverse().join('/')}</b> - ${h.nome}</div>`).join('') : '<p style="text-align:center; color:#999;">Sem histórico.</p>';
+            abrirModal('modalHistorico');
+        }
+
+        function limparHistorico() { if(confirm("Apagar histórico?")) { localStorage.removeItem('verdiary_historico'); renderizarTudo(); fecharModal('modalHistorico'); } }
+        
+        function editarPlanta(idx) { 
+            editIndex = idx; 
+            const p = minhasPlantas[idx]; 
+            document.getElementById('modalTitulo').innerText = "Editar Planta"; 
+            document.getElementById('nome').value = p.nome; 
+            document.getElementById('intervalo').value = p.intervalo; 
+            
+            // BLOQUEIO DA DATA NA EDIÇÃO
+            const campoData = document.getElementById('dataRega');
+            campoData.value = p.data;
+            campoData.readOnly = true;
+            campoData.style.opacity = "0.6";
+            
+            document.getElementById('cor').value = p.cor; 
+            abrirModal('modalPlanta'); 
+        }
+
+        function mudarMes(d) { dataVisualizacao.setMonth(dataVisualizacao.getMonth() + d); renderizarTudo(); }
+
+        function abrirModalCadastro() { 
+            editIndex = null; 
+            document.getElementById('modalTitulo').innerText = "Nova Planta"; 
+            document.getElementById('nome').value = ""; 
+            document.getElementById('intervalo').value = ""; 
+            
+            // LIBERA A DATA NO CADASTRO
+            const campoData = document.getElementById('dataRega');
+            campoData.value = getHojeISO();
+            campoData.readOnly = false;
+            campoData.style.opacity = "1";
+            
+            abrirModal('modalPlanta'); 
+        }
+
+        function prepararExcluir(i) { if(confirm("Remover planta?")) { minhasPlantas.splice(i, 1); localStorage.setItem('plantas', JSON.stringify(minhasPlantas)); renderizarTudo(); } }
+        function revelarApp() { document.getElementById('pagina-inicial').style.display = 'none'; const app = document.getElementById('app-principal'); app.style.display = 'flex'; setTimeout(() => { app.style.opacity = '1'; renderizarTudo(); }, 50); }
+        
+        function mostrarBalao(event, dia, mes, ano) {
+            const dStr = ano + '-' + String(mes + 1).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+            let nomes = [];
+            minhasPlantas.forEach(p => {
+                let dP = new Date(p.data + 'T00:00:00'); dP.setDate(dP.getDate() + p.intervalo);
+                if(dP.getFullYear() + '-' + String(dP.getMonth() + 1).padStart(2, '0') + '-' + String(dP.getDate()).padStart(2, '0') === dStr) nomes.push(`💧 ${p.nome}`);
+            });
+            const hist = JSON.parse(localStorage.getItem('verdiary_historico')) || [];
+            hist.forEach(h => { if(h.dataISO === dStr) if(!nomes.includes(`✅ ${h.nome}`)) nomes.push(`✅ ${h.nome}`); });
+            if(nomes.length > 0) {
+                const antigo = document.querySelector('.balao-info'); if(antigo) antigo.remove();
+                const balao = document.createElement('div'); balao.className = 'balao-info';
+                balao.innerHTML = nomes.join('<br>'); document.body.appendChild(balao);
+                const rect = event.currentTarget.getBoundingClientRect();
+                balao.style.left = (rect.left + rect.width / 2) + 'px'; balao.style.top = (rect.top + window.scrollY) + 'px';
+                setTimeout(() => { if(balao) balao.remove(); }, 2500);
+            }
+        }
+
+        // --- LÓGICA DE NOTIFICAÇÕES (BAR BOTÂNICO) ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
+        if ("Notification" in window) {
+            Notification.requestPermission();
+        }
+
+        function enviarAviso(titulo, msg) {
+            if (Notification.permission === "granted") {
+                navigator.serviceWorker.ready.then(reg => {
+                    reg.showNotification(titulo, {
+                        body: msg,
+                        icon: 'Logo192.png',
+                        badge: 'Logo192.png',
+                        vibrate: [200, 100, 200]
+                    });
+                });
+            }
+        }
+
+        setInterval(() => {
+            const agora = new Date();
+            const h = agora.getHours();
+            const m = agora.getMinutes();
+            const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+            const nomesHoje = minhasPlantas.filter(p => {
+                let d = new Date(p.data + 'T00:00:00'); d.setDate(d.getDate() + p.intervalo);
+                return d.getTime() === hoje.getTime();
+            }).map(p => p.nome).join(", ");
+
+            const nomesAtrasadas = minhasPlantas.filter(p => {
+                let d = new Date(p.data + 'T00:00:00'); d.setDate(d.getDate() + p.intervalo);
+                return d < hoje;
+            }).map(p => p.nome).join(", ");
+
+            if (m === 0) {
+                if (h === 8 && nomesHoje) enviarAviso("Bom dia mestre, o bar está aberto! ☀️", `Uma dose de H2O para: ${nomesHoje}. Bora servir?`);
+                if (h === 15 && nomesAtrasadas) enviarAviso("Copo vazio! ⚠️", `As plantas ${nomesAtrasadas} não foram regadas. Cuide de suas plantas!`);
+                if (h === 21) enviarAviso("Saideira? 🌙", "Antes de dormir fecha o dia dando o OK nas regas!");
+            }
+        }, 60000);
+    </script>
+</body>
+</html>
